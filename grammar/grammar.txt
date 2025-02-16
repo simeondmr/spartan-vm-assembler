@@ -1,0 +1,66 @@
+* * * * * * * * * * * * * * * *
+* spartan-vm assembly grammar *
+* * * * * * * * * * * * * * * *
+
+program: vars_decl section_text
+
+vars_decl: section_bss section_data
+
+section_bss:
+            'section_bss' decl_bss
+            | /* epsilon */
+
+decl_bss:
+         single_var_decl decl_bss
+         | /* epsilon */
+
+section_data:
+             'section_data' decl_data
+             | /* epsilon */
+
+decl_data:
+          single_var_decl data_init decl_data
+          | /* epsilon */
+
+single_var_decl: <literal> var_type <number> /* number element of size 'type' to allocate */
+
+var_type:
+         'resb'
+       | 'resw'
+       | 'resd'
+
+data_init:
+          <number>    /* Every cell with the same value */
+        | <string>    /* Every cell with the same value */
+        | '[' list_init ']'
+
+list_init: list_element list_init'
+
+list_init':
+           ',' list_element list_init'
+          | /* epsilon */
+
+list_element: <character> | <number>
+
+section_text:
+            'section_text' instructions
+            | /* epsilon */
+
+instructions:
+             instruction instructions
+             | /* epsilon */
+
+instruction:
+            'pushb' <number>
+          | 'pushw' <number>
+          | 'pushl' <number>
+          | 'hlt'
+          | <label>
+
+<label>: [a-zA-Z] [a-zA-Z0-9]* ':'
+
+<literal>: [a-zA-Z] [a-zA-Z0-9]*
+
+<number>: [0-9]+
+
+<character>: '\'' [a-zA-Z0-9] '\''
