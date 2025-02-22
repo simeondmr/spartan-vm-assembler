@@ -1,9 +1,8 @@
-use std::cell::RefCell;
 use std::num::{NonZero, NonZeroU32};
-use std::rc::Rc;
 use crate::error::errors::AssemblerErrors;
-use crate::parser::program::{GrammarProductionParsing, LexerCodeGen};
-use crate::semantic_analyzer;
+use crate::lexer::lexer::Token;
+use crate::parser::program::GrammarProductionParsing;
+use crate::semantic_analyzer::semantic_analyzer;
 
 pub struct VarType;
 
@@ -15,39 +14,21 @@ impl VarType {
     }
 }
 
-pub struct VarDeclAttribute<'a> {
-    lexer_code_gen: Rc<RefCell<LexerCodeGen<'a>>>,
-    is_bss: bool
-}
+impl GrammarProductionParsing<(), Option<NonZero<u32>>> for VarType {
+    fn parse(&self, _param: Option<()>) -> Result<Option<NonZero<u32>>, AssemblerErrors> {
+        let mut lexer = <VarType as GrammarProductionParsing<_, _>>::lexer_lock();
+        let allocation_size  = semantic_analyzer::check_var_type(lexer.current_token().clone())?;
 
-impl <'a> VarDeclAttribute<'a> {
-    pub fn new(lexer_code_gen: Rc<RefCell<LexerCodeGen<'a>>>, is_bss: bool) -> VarDeclAttribute<'a> {
-        VarDeclAttribute {
-            lexer_code_gen,
-            is_bss,
+        match lexer.current_token().clone() {
+            Token::RESB(_) => <VarType as GrammarProductionParsing<_, _>>::match_token(&Token::RESB(0), &mut lexer)?,
+            Token::RESW(_) => <VarType as GrammarProductionParsing<_, _>>::match_token(&Token::RESW(0), &mut lexer)?,
+            Token::RESD(_) => <VarType as GrammarProductionParsing<_, _>>::match_token(&Token::RESD(0), &mut lexer)?,
+            _ => {
+                println!("Expected size");
+                return Err(AssemblerErrors::SyntaxError)
+            }
         }
-    }
 
-    pub fn lexer_code_gen(&self) -> &Rc<RefCell<LexerCodeGen<'a>>> {
-        &self.lexer_code_gen
-    }
-
-    #[allow(dead_code)]
-    pub fn is_bss(&self) -> bool {
-        self.is_bss
-    }
-
-    #[allow(dead_code)]
-    pub fn set_is_bss(&mut self, is_bss: bool) {
-        self.is_bss = is_bss;
-    }
-}
-
-impl <'a> GrammarProductionParsing<VarDeclAttribute<'a>, Option<NonZero<u32>>> for VarType {
-    fn parse(&self, var_decl_attribute: Rc<RefCell<VarDeclAttribute<'a>>>) -> Result<Option<NonZero<u32>>, AssemblerErrors> {
-        let var_decl = var_decl_attribute.borrow_mut();
-        let mut lexer_code_gen = var_decl.lexer_code_gen.borrow_mut();
-        let allocation_size  = semantic_analyzer::semantic_analyzer::check_var_type(lexer_code_gen.current_token().clone(), &mut lexer_code_gen)?;
         Ok(NonZeroU32::new(allocation_size))
     }
 }

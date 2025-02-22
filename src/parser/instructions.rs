@@ -1,12 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::error::errors::AssemblerErrors;
 use crate::lexer::lexer::Token;
-use crate::parser::program::{GrammarProductionParsing, LexerCodeGen};
+use crate::parser::program::{GrammarProductionParsing};
 
-pub struct Instructions {
-
-}
+pub struct Instructions;
 
 impl Instructions {
     pub fn new() -> Self {
@@ -16,24 +12,26 @@ impl Instructions {
     }
 }
 
-impl <'a> GrammarProductionParsing<LexerCodeGen<'a>, ()> for Instructions {
-    fn parse(&self, lexer_codegen: Rc<RefCell<LexerCodeGen>>) -> Result<(), AssemblerErrors> {
-        let mut lexer_codegen = lexer_codegen.borrow_mut();
+impl GrammarProductionParsing<(), ()> for Instructions {
+    fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
+        let mut lexer = <Instructions as GrammarProductionParsing<_,_>>::lexer_lock();
 
-        while lexer_codegen.is_instruction() {
-            let current_token = lexer_codegen.current_token().clone();
+        while lexer.is_instruction() {
+            let current_token = lexer.current_token().clone();
 
             match current_token {
-                Token::Iadd32(_) => {
-                    lexer_codegen.match_token(&current_token)?;
-                    lexer_codegen.match_token(&Token::NumberU32(0, 0))?;
+                Token::Iaddb(_) => {
+                    <Instructions as GrammarProductionParsing<_,_>>::match_token(&current_token, &mut lexer)?;
                 }
                 Token::Pushb(_) => {
-                    lexer_codegen.match_token(&current_token)?;
-                    lexer_codegen.match_token(&Token::NumberU32(0, 0))?;
+                    <Instructions as GrammarProductionParsing<_,_>>::match_token(&current_token, &mut lexer)?;
+                    <Instructions as GrammarProductionParsing<_,_>>::match_token(&Token::NumberU32(0, 0), &mut lexer)?;
                 }
                 Token::Jmp(_) => {}
-                _ => return Err(AssemblerErrors::SyntaxError)
+                _ =>  {
+                    println!("Error at line {}: not recognized instruction", current_token.line());
+                    return Err(AssemblerErrors::SyntaxError)
+                }
             }
         }
 

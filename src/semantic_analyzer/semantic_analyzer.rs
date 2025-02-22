@@ -1,21 +1,16 @@
-use std::cell::RefMut;
 use crate::error::errors::AssemblerErrors;
 use crate::lexer::lexer::Token;
-use crate::parser::program::LexerCodeGen;
 use crate::symbol_table::symbol_table::VariableInfo;
 
-pub fn check_var_type(token: Token, lexer_code_gen: &mut RefMut<LexerCodeGen>) -> Result<u32, AssemblerErrors> {
+pub fn check_var_type(token: Token) -> Result<u32, AssemblerErrors> {
     match token {
         Token::RESB(_) => {
-            lexer_code_gen.match_token(&Token::RESB(0))?;
             Ok(1)
         },
         Token::RESW(_) => {
-            lexer_code_gen.match_token(&Token::RESW(0))?;
             Ok(2)
         },
         Token::RESD(_) => {
-            lexer_code_gen.match_token(&Token::RESD(0))?;
             Ok(4)
         },
         _ => {
@@ -82,9 +77,9 @@ pub fn check_list_init_smaller_size(line: u32, current_size: u32, list_size: u32
     }
 }
 
-pub fn check_var_declaration(variable_info: Option<VariableInfo>) -> Result<VariableInfo, AssemblerErrors> {
+pub fn check_var_declaration(line: u32, variable_info: Option<VariableInfo>) -> Result<VariableInfo, AssemblerErrors> {
     variable_info.ok_or_else(|| {
-        eprintln!("Error: variable already declared");
+        eprintln!("Error at line {}: variable already declared", line);
         AssemblerErrors::SemanticError
     })
 }

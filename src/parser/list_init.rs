@@ -1,10 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::error::errors::AssemblerErrors;
 use crate::lexer::lexer::Token;
-use crate::parser::decl_data::DataInitAttribute;
 use crate::parser::program::{GrammarProductionParsing};
-use crate::semantic_analyzer;
+use crate::semantic_analyzer::semantic_analyzer;
+use crate::symbol_table::symbol_table::VariableInfo;
 
 pub struct ListInit;
 
@@ -16,29 +14,29 @@ impl ListInit {
     }
 }
 
-impl <'a> GrammarProductionParsing<DataInitAttribute<'a>, ()> for ListInit {
-    fn parse(&self, param: Rc<RefCell<DataInitAttribute<'a>>>) -> Result<(), AssemblerErrors> {
-        let data_init_attribute = param.borrow_mut();
-        let mut lexer_codegen = data_init_attribute.lexer_code_gen().borrow_mut();
-        let list_type = lexer_codegen.current_token().clone();
+impl GrammarProductionParsing<VariableInfo, ()> for ListInit {
+    fn parse(&self, variable_info: Option<VariableInfo>) -> Result<(), AssemblerErrors> {
+        let mut lexer = <ListInit as GrammarProductionParsing<_, _>>::lexer_lock();
+        let list_type = lexer.current_token().clone();
         let mut current_size = 1;
-        let list_size = data_init_attribute.variable_info().total_size() / data_init_attribute.variable_info().type_size();
+        let variable_info = variable_info.unwrap();
+        let list_size = variable_info.total_size() / variable_info.type_size();
 
-        semantic_analyzer::semantic_analyzer::check_list_init_first(&list_type)?;
-        lexer_codegen.match_token(&list_type)?;
+        semantic_analyzer::check_list_init_first(&list_type)?;
+        <ListInit as GrammarProductionParsing<_, _>>::match_token(&list_type, &mut lexer)?;
 
-        let mut current_token = lexer_codegen.current_token().clone();
+        let mut current_token = lexer.current_token().clone();
         while current_token == Token::SingleElem(0, ',') {
-            lexer_codegen.match_token(&Token::SingleElem(0, ','))?;
-            current_token = lexer_codegen.current_token().clone();
-            semantic_analyzer::semantic_analyzer::check_list_init_type(&list_type, &current_token)?;
-            lexer_codegen.match_token(&current_token)?;
+            <ListInit as GrammarProductionParsing<_, _>>::match_token(&current_token, &mut lexer)?;
+            current_token = lexer.current_token().clone();
+            semantic_analyzer::check_list_init_type(&list_type, &current_token)?;
+            <ListInit as GrammarProductionParsing<_, _>>::match_token(&current_token, &mut lexer)?;
             current_size += 1;
-            semantic_analyzer::semantic_analyzer::check_list_init_size(current_token.line(), current_size, list_size)?;
-            current_token = lexer_codegen.current_token().clone();
+            semantic_analyzer::check_list_init_size(current_token.line(), current_size, list_size)?;
+            current_token = lexer.current_token().clone();
         }
 
-        semantic_analyzer::semantic_analyzer::check_list_init_smaller_size(current_token.line(), current_size, list_size);
+        semantic_analyzer::check_list_init_smaller_size(current_token.line(), current_size, list_size);
 
         Ok(())
     }

@@ -1,7 +1,5 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use crate::error::errors::AssemblerErrors;
-use crate::parser::program::{GrammarProductionParsing, LexerCodeGen};
+use crate::parser::program::{GrammarProductionParsing};
 use crate::parser::section_bss::SectionBss;
 use crate::parser::section_data::SectionData;
 
@@ -19,9 +17,9 @@ impl VarsDecl {
     }
 }
 
-impl <'a> GrammarProductionParsing<LexerCodeGen<'a> ,()> for VarsDecl {
-    fn parse(&self, lexer_code_gen: Rc<RefCell<LexerCodeGen<'a>>>) -> Result<(), AssemblerErrors> {
-        self.section_bss.parse(Rc::clone(&lexer_code_gen))?;
-        self.section_data.parse(Rc::clone(&lexer_code_gen))
+impl GrammarProductionParsing<(), ()> for VarsDecl {
+    fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
+        self.section_bss.parse(None)?;
+        self.section_data.parse(None)
     }
 }

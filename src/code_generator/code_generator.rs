@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub struct CodeGen {
 
 
@@ -5,26 +6,13 @@ pub struct CodeGen {
 }
 
 impl CodeGen {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         CodeGen {
 
         }
     }
 }
-
-
-
-
-
-//metodo per generazione di codice per le istruzioni
-
-
-
-//metodo per la generazione e gestione offset delle sezioni .data e .bss
-
-
-//metodo per gestione backpacking dei riferimenti
-
 
 
 
