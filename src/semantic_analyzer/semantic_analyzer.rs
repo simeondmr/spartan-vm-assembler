@@ -54,7 +54,7 @@ pub fn check_list_init_type(list_type: &Token, current_token_type: &Token) -> Re
 }
 
 pub fn check_list_init_first(first_element: &Token) -> Result<(), AssemblerErrors> {
-    if *first_element != Token::NumberU32(0, 0) {
+    if *first_element != Token::NumberU32(0, 0) && *first_element != Token::CharTok(0, ' ') {
         eprintln!("Error at line {}: expected number or charter, found: {:?}", first_element.line(), first_element);
         return  Err(AssemblerErrors::SemanticError)
     }
