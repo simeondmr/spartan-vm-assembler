@@ -21,30 +21,29 @@ impl GrammarProductionParsing<VariableInfo, ()> for DataInit {
     fn parse(&self, variable_info_option: Option<VariableInfo>) -> Result<(), AssemblerErrors> {
         let lexer = <DataInit as GrammarProductionParsing<_, _>>::lexer();
         let variable_info = variable_info_option.unwrap();
-        let current_token = lexer.lock().unwrap().current_token().clone();
+        let current_token = lexer.lock().unwrap().current_token();
 
         match current_token {
             Token::NumberU32(_, init_value) => {
-                <DataInit as GrammarProductionParsing<_, _>>::match_token(&Token::NumberU32(init_value, 0), &mut lexer.lock().unwrap())?;
-                //TODO: call code generator in order to copy init_value, n° ariable_info.total_size() / variable_info.type_size() times, from address variable_info.offset()
-                return Ok(())
+                lexer.lock().unwrap().next_token();
+                <DataInit as GrammarProductionParsing<_, _>>::codegen().lock().unwrap().init_memory_from_addr(variable_info.type_size(), variable_info.number_cell(), init_value, variable_info.offset());
             },
             Token::StringTok(line, init_value) => {
                 semantic_analyzer::semantic_analyzer::check_string_init(&variable_info, init_value.len() as u32, line)?;
-                //TODO: call code generator in order to copy init_value, from address variable_info.offset()
-                <DataInit as GrammarProductionParsing<_, _>>::match_token(&Token::StringTok(0, String::new()), &mut lexer.lock().unwrap())?;
-                return Ok(())
+                <DataInit as GrammarProductionParsing<_, _>>::codegen().lock().unwrap().copy_string_from_addr(init_value, variable_info.offset());
+                lexer.lock().unwrap().next_token();
             },
             Token::SingleElem(_, '[') => {
-                <DataInit as GrammarProductionParsing<_, _>>::match_token(&Token::SingleElem(0, '['), &mut lexer.lock().unwrap())?;
+                lexer.lock().unwrap().next_token();
                 self.list_init.parse(Some(variable_info))?;
                 <DataInit as GrammarProductionParsing<_, _>>::match_token(&Token::SingleElem(0, ']'), &mut lexer.lock().unwrap())?;
-                return Ok(())
             },
             _ => {
                 println!("Error at line {} : in 'section_data', data must be initialized", lexer.lock().unwrap().current_line());
-                Err(AssemblerErrors::SyntaxError)
+                return Err(AssemblerErrors::SyntaxError)
             }
         }
+
+        Ok(())
     }
 }

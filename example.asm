@@ -1,9 +1,9 @@
-section_bss
-    a resb 10
-    b resb 66
-section_data
-    c resb 118 5
-    d resb 1 [1]
 section_text
-    pushb 11
-    iaddb
+    pushd 33
+test:
+    jmp test
+    jmp test2
+    jmp test4
+test2:
+test4:
+    pushb 2

@@ -1,28 +1,30 @@
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader};
 use std::sync::{Mutex, OnceLock};
 use regex::Regex;
 
 pub static LEXER_SINGLETON: OnceLock<Mutex<Lexer>> = OnceLock::new();
 
-
 const SECTION_BSS: &str = "^section_bss";
 const SECTION_DATA: &str = "^section_data";
 const SECTION_TEXT: &str = "^section_text";
 const IADDB: &str = "^iaddb";
-
 const RESB: &str = "^resb";
 const RESW: &str = "^resw";
 const RESD: &str = "^resd";
-
 const PUSHB: &str = "^pushb";
+const PUSHW: &str = "^pushw";
+const PUSHD: &str = "^pushd";
+const JMP: &str = "^jmp";
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq)]
 #[allow(dead_code)]
 pub enum Token {
     Iaddb(u32),
     Pushb(u32),
+    Pushw(u32),
+    Pushd(u32),
     Jmp(u32),
     Hlt(u32),
     SectionBssTok(u32),
@@ -49,6 +51,8 @@ impl Token {
         match self {
             Token::Iaddb(line) => *line,
             Token::Pushb(line) => *line,
+            Token::Pushw(line) => *line,
+            Token::Pushd(line) => *line,
             Token::Hlt(line) => *line,
             Token::Jmp(line) => *line,
             Token::SectionBssTok(line) => *line,
@@ -59,13 +63,32 @@ impl Token {
             Token::RESD(line) => *line,
             Token::NumberU32(line, _) => *line,
             Token::Literal(line, _) => *line,
+            Token::CharTok(line, _) => *line,
             Token::Label(line, _) =>*line,
             Token::StringTok(line, _) => *line,
             Token::SingleElem(line, _) => *line,
             Token::EOF(line) => *line,
             Token::INIT(line) => *line,
-            _ => {0}
+            _ => 0
         }
+    }
+
+    pub fn extract_number_character_val(&self) -> Option<u32> {
+        if let Token::NumberU32(_,value) = self {
+            return Some(*value);
+        } else if let Token::CharTok(_, value) = self {
+            return Some(*value as u32);
+        }
+
+        None
+    }
+
+    pub fn extract_literal_value(&self) -> Option<String> {
+        if let Token::Literal(_, name) = self {
+            return Some(name.clone())
+        }
+
+        None
     }
 }
 
@@ -74,21 +97,39 @@ impl PartialEq for Token {
         match (self, other) {
             (Token::Iaddb(_), Token::Iaddb(_)) => true,
             (Token::Pushb(_), Token::Pushb(_)) => true,
+            (Token::Pushw(_), Token::Pushw(_)) => true,
+            (Token::Pushd(_), Token::Pushd(_)) => true,
             (Token::Jmp(_), Token::Jmp(_)) => true,
             (Token::NumberU32(_, _), Token::NumberU32(_, _)) => true,
             (Token::Literal(_, _), Token::Literal(_, _)) => true,
             (Token::CharTok(_, _), Token::CharTok(_, _)) => true,
             (Token::Label(_, _), Token::Label(_, _)) => true,
             (Token::StringTok(_, _), Token::StringTok(_, _)) => true,
-            (Token::SingleElem(_, element0), Token::SingleElem(_, element1)) => if element0 == element1{ true } else { false },
+            (Token::SingleElem(_, element0), Token::SingleElem(_, element1)) => if element0 == element1 { true } else { false },
             (Token::SectionBssTok(_), Token::SectionBssTok(_)) => true,
             (Token::SectionData(_), Token::SectionData(_)) => true,
             (Token::SectionText(_), Token::SectionText(_)) => true,
             (Token::RESB(_), Token::RESB(_)) => true,
             (Token::RESW(_), Token::RESW(_)) => true,
+            (Token::RESD(_), Token::RESD(_)) => true,
             (Token::EOF(_), Token::EOF(_)) => true,
             _ => false
         }
+    }
+}
+
+impl Hash for Token {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let variant_id = match self {
+            Token::Iaddb(_) => 0,
+            Token::Pushb(_) => 1,
+            Token::Pushw(_) => 2,
+            Token::Pushd(_) => 3,
+            Token::Jmp(_) => 4,
+            _ => { 10 }
+        };
+
+        variant_id.hash(state);
     }
 }
 
@@ -115,9 +156,8 @@ impl Lexer {
             if self.buffer.is_empty() {
                 let mut line = String::new();
                 if self.reader.read_line(&mut line).unwrap() == 0 {
-
                     self.current_token = Token::EOF(self.current_line);
-                    return self.current_token.clone() // Fine del file
+                    return self.current_token.clone()
                 }
 
                 self.current_line += 1;
@@ -148,6 +188,9 @@ impl Lexer {
             (RESD, Token::RESD(0)),
             (IADDB, Token::Iaddb(0)),
             (PUSHB, Token::Pushb(0)),
+            (PUSHW, Token::Pushw(0)),
+            (PUSHD, Token::Pushd(0)),
+            (JMP, Token::Jmp(0)),
             (r"^[a-zA-Z_][a-zA-Z0-9_]*:", Token::Label(0, "".to_string())),
             (r"^[a-zA-Z_][a-zA-Z0-9_]*", Token::Literal(0, "".to_string())),
             (r"^[+]?\d+", Token::NumberU32(0,0)),
@@ -166,15 +209,18 @@ impl Lexer {
                     Token::SectionData(_) => Token::SectionData(self.current_line),
                     Token::SectionText(_) => Token::SectionText(self.current_line),
                     Token::RESB(_) => Token::RESB(self.current_line),
-                    Token::RESW(_) => Token::RESB(self.current_line),
-                    Token::RESD(_) => Token::RESB(self.current_line),
+                    Token::RESW(_) => Token::RESW(self.current_line),
+                    Token::RESD(_) => Token::RESD(self.current_line),
                     Token::Iaddb(_) => Token::Iaddb(self.current_line),
                     Token::Pushb(_) => Token::Pushb(self.current_line),
+                    Token::Pushw(_) => Token::Pushw(self.current_line),
+                    Token::Pushd(_) => Token::Pushd(self.current_line),
+                    Token::Jmp(_) => Token::Jmp(self.current_line),
                     Token::StringTok(_, _) => Token::StringTok(self.current_line, matched_str.trim_matches('"').to_string()),
+                    Token::Label(_, _) => Token::Label(self.current_line, matched_str.trim_matches(':').to_string()),
                     Token::Literal(_, _) => Token::Literal(self.current_line, matched_str),
                     Token::NumberU32(_, _) => Token::NumberU32(self.current_line, matched_str.parse().expect("expected number")),
                     Token::NumberI32(_, _) => Token::NumberI32(self.current_line, matched_str.parse().expect("expected number")),
-                    Token::Label(_, _) => Token::Label(self.current_line, matched_str),
                     Token::Comment => Token::Comment,
                     Token::SingleElem(_, _) => Token::SingleElem(self.current_line, matched_str.chars().next().unwrap()),
                     Token::CharTok(_, _) => Token::CharTok(self.current_line, matched_str.chars().nth(1).unwrap()),
@@ -198,7 +244,10 @@ impl Lexer {
         match self.current_token {
             Token::Iaddb(_) => true,
             Token::Pushb(_) => true,
+            Token::Pushw(_) => true,
+            Token::Pushd(_) => true,
             Token::Jmp(_) => true,
+            Token::Label(_, _) => true,
             _ => false
         }
     }

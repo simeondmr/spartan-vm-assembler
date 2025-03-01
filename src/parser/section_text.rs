@@ -22,7 +22,7 @@ impl GrammarProductionParsing<(), ()> for SectionText {
             return Ok(())
         }
 
-        <SectionText as GrammarProductionParsing<_, _>>::match_token(&Token::SectionText(0), &mut lexer)?;
+        lexer.next_token();
         drop(lexer);
         self.instructions.parse(None)
     }

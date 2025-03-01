@@ -23,7 +23,7 @@ impl GrammarProductionParsing<(), ()> for SectionBss {
             return Ok(())
         }
 
-        <SectionBss as GrammarProductionParsing<_, _>>::match_token(&Token::SectionBssTok(0), &mut lexer)?;
+        lexer.next_token();
         drop(lexer);
         self.decl_bss.parse(None)?;
 

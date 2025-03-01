@@ -18,12 +18,11 @@ impl SectionData {
 impl GrammarProductionParsing<(), ()> for SectionData {
     fn parse(& self, _param: Option<()>) -> Result<(), AssemblerErrors> {
         let mut lexer = <SectionData as GrammarProductionParsing<_, _>>::lexer_lock();
-
         if lexer.current_token() != Token::SectionData(0) {
             return Ok(())
         }
 
-        <SectionData as GrammarProductionParsing<_, _>>::match_token(&Token::SectionData(0), &mut lexer)?;
+        lexer.next_token();
         drop(lexer);
         self.decl_data.parse(None)?;
 

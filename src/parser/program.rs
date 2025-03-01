@@ -1,4 +1,5 @@
 use std::sync::{Mutex, MutexGuard};
+use crate::code_generator::code_generator::{CodeGen, CODEGEN_SINGLETON};
 use crate::error::errors::AssemblerErrors;
 use crate::lexer::lexer::{Lexer, LEXER_SINGLETON, Token};
 use crate::parser::section_text::SectionText;
@@ -15,6 +16,15 @@ pub trait GrammarProductionParsing<A, B> {
     fn match_token(expected_token: &Token, lexer: &mut Lexer) -> Result<(), AssemblerErrors> {
         if *expected_token == lexer.current_token() {
             lexer.next_token();
+            return Ok(())
+        }
+
+        eprintln!("Error at line {}: expected {:?}, but found {:?}", lexer.current_line(), expected_token, lexer.current_token());
+        Err(AssemblerErrors::SyntaxError)
+    }
+
+    fn expected(expected_token: &Token, lexer: &mut Lexer) -> Result<(), AssemblerErrors>{
+        if *expected_token == lexer.current_token() {
             return Ok(())
         }
 
@@ -41,6 +51,19 @@ pub trait GrammarProductionParsing<A, B> {
     fn symbol_table() -> &'static Mutex<SymbolTable> {
         SYMBOL_TABLE_SINGLETON.get().unwrap()
     }
+
+    fn symbol_table_lock() ->MutexGuard<'static, SymbolTable> {
+        SYMBOL_TABLE_SINGLETON.get().unwrap().lock().unwrap()
+    }
+
+    fn codegen() -> &'static Mutex<CodeGen> {
+        CODEGEN_SINGLETON.get().unwrap()
+    }
+
+    fn codegen_lock() ->MutexGuard<'static, CodeGen> {
+        CODEGEN_SINGLETON.get().unwrap().lock().unwrap()
+    }
+
 }
 
 pub struct Program {
@@ -53,11 +76,14 @@ impl GrammarProductionParsing<(), ()> for Program {
     fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
         let lexer = LEXER_SINGLETON.get_or_init(|| Mutex::new(Lexer::new(self.file_name.clone())));
         SYMBOL_TABLE_SINGLETON.get_or_init(|| Mutex::new(SymbolTable::new()));
+        CODEGEN_SINGLETON.get_or_init(|| Mutex::new(CodeGen::new()));
         lexer.lock().unwrap().next_token();
         self.vars_decl.parse(None)?;
         self.section_text.parse(None)?;
-        let mut lexer = lexer.lock().unwrap();
-        <Program as GrammarProductionParsing<_, _>>::match_token(&Token::EOF(0), &mut lexer)
+        let mut codegen = <Program as GrammarProductionParsing<_, _>>::codegen_lock();
+        codegen.perform_backpatching(&SYMBOL_TABLE_SINGLETON.get().unwrap().lock().unwrap())?;
+        codegen.debug_codegenerated();
+        <Program as GrammarProductionParsing<_, _>>::match_token(&Token::EOF(0), &mut lexer.lock().unwrap())
     }
 }
 

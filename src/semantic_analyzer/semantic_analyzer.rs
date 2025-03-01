@@ -2,24 +2,6 @@ use crate::error::errors::AssemblerErrors;
 use crate::lexer::lexer::Token;
 use crate::symbol_table::symbol_table::VariableInfo;
 
-pub fn check_var_type(token: Token) -> Result<u32, AssemblerErrors> {
-    match token {
-        Token::RESB(_) => {
-            Ok(1)
-        },
-        Token::RESW(_) => {
-            Ok(2)
-        },
-        Token::RESD(_) => {
-            Ok(4)
-        },
-        _ => {
-            eprintln!("Error a line {}: missing variable type, found: {:?}", token.line(), token);
-            Err(AssemblerErrors::SemanticError)
-        }
-    }
-}
-
 pub fn check_array_size(size: u32) -> Result<(), AssemblerErrors> {
     if size <= 0 {
         eprintln!("Error: the current array size is {} but must be greater than 0", size);
@@ -55,7 +37,7 @@ pub fn check_list_init_type(list_type: &Token, current_token_type: &Token) -> Re
 
 pub fn check_list_init_first(first_element: &Token) -> Result<(), AssemblerErrors> {
     if *first_element != Token::NumberU32(0, 0) && *first_element != Token::CharTok(0, ' ') {
-        eprintln!("Error at line {}: expected number or charter, found: {:?}", first_element.line(), first_element);
+        eprintln!("Error at line {}: expected number or character, but found: {:?}", first_element.line(), first_element);
         return  Err(AssemblerErrors::SemanticError)
     }
 
@@ -82,13 +64,4 @@ pub fn check_var_declaration(line: u32, variable_info: Option<VariableInfo>) -> 
         eprintln!("Error at line {}: variable already declared", line);
         AssemblerErrors::SemanticError
     })
-}
-
-pub fn check_literal_var_name(token: Token) -> Result<String, AssemblerErrors> {
-    if let Token::Literal(_, name) = token {
-        return Ok(name)
-    }
-
-    eprintln!("Error at line {}: expected a Literal for variable name but not found {:?}", token.line(), token);
-    Err(AssemblerErrors::SemanticError)
 }

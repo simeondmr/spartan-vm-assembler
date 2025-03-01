@@ -20,9 +20,10 @@ impl DeclData {
 
 impl GrammarProductionParsing<(), ()> for DeclData {
     fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
-        let lexer = <DeclData as GrammarProductionParsing<_, _>>::lexer();
-
-        while lexer.lock().unwrap().current_token() == Token::Literal(0, "".to_string()) {
+        while let Token::Literal(_, _) = {
+            let lexer = <DeclData as GrammarProductionParsing<_, _>>::lexer_lock();
+            lexer.current_token()
+        } {
             let variable_info = self.single_var_decl.parse(None)?;
             self.data_init.parse(Some(variable_info))?;
         }

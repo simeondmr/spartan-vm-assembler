@@ -1,5 +1,6 @@
 #[derive(Debug)]
 pub enum AssemblerErrors {
     SyntaxError,
-    SemanticError
+    SemanticError,
+    WrongArgument
 }

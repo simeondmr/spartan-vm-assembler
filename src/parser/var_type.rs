@@ -2,7 +2,6 @@ use std::num::{NonZero, NonZeroU32};
 use crate::error::errors::AssemblerErrors;
 use crate::lexer::lexer::Token;
 use crate::parser::program::GrammarProductionParsing;
-use crate::semantic_analyzer::semantic_analyzer;
 
 pub struct VarType;
 
@@ -14,21 +13,25 @@ impl VarType {
     }
 }
 
+static RESB_SIZE: u32 = 1;
+static RESW_SIZE: u32 = 2;
+static RESD_SIZE: u32 = 4;
+
 impl GrammarProductionParsing<(), Option<NonZero<u32>>> for VarType {
     fn parse(&self, _param: Option<()>) -> Result<Option<NonZero<u32>>, AssemblerErrors> {
         let mut lexer = <VarType as GrammarProductionParsing<_, _>>::lexer_lock();
-        let allocation_size  = semantic_analyzer::check_var_type(lexer.current_token().clone())?;
-
-        match lexer.current_token().clone() {
-            Token::RESB(_) => <VarType as GrammarProductionParsing<_, _>>::match_token(&Token::RESB(0), &mut lexer)?,
-            Token::RESW(_) => <VarType as GrammarProductionParsing<_, _>>::match_token(&Token::RESW(0), &mut lexer)?,
-            Token::RESD(_) => <VarType as GrammarProductionParsing<_, _>>::match_token(&Token::RESD(0), &mut lexer)?,
+        let current_token = lexer.current_token();
+        let allocation_size = match current_token {
+            Token::RESB(_) => Ok(NonZeroU32::new(RESB_SIZE)),
+            Token::RESW(_) => Ok(NonZeroU32::new(RESW_SIZE)),
+            Token::RESD(_) => Ok(NonZeroU32::new(RESD_SIZE)),
             _ => {
-                println!("Expected size");
+                eprintln!("Error a line {}: missing variable type, found: {:?}", current_token.line(), current_token);
                 return Err(AssemblerErrors::SyntaxError)
             }
-        }
+        };
 
-        Ok(NonZeroU32::new(allocation_size))
+        lexer.next_token();
+        allocation_size
     }
 }
