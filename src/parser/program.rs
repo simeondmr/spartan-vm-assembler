@@ -80,10 +80,11 @@ impl GrammarProductionParsing<(), ()> for Program {
         lexer.lock().unwrap().next_token();
         self.vars_decl.parse(None)?;
         self.section_text.parse(None)?;
-        let mut codegen = <Program as GrammarProductionParsing<_, _>>::codegen_lock();
+        let mut codegen = Self::codegen_lock();
         codegen.perform_backpatching(&SYMBOL_TABLE_SINGLETON.get().unwrap().lock().unwrap())?;
+        Self::match_token(&Token::EOF(0), &mut lexer.lock().unwrap())?;
         codegen.debug_codegenerated();
-        <Program as GrammarProductionParsing<_, _>>::match_token(&Token::EOF(0), &mut lexer.lock().unwrap())
+        Ok(())
     }
 }
 

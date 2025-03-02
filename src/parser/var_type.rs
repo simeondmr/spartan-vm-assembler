@@ -19,7 +19,7 @@ static RESD_SIZE: u32 = 4;
 
 impl GrammarProductionParsing<(), Option<NonZero<u32>>> for VarType {
     fn parse(&self, _param: Option<()>) -> Result<Option<NonZero<u32>>, AssemblerErrors> {
-        let mut lexer = <VarType as GrammarProductionParsing<_, _>>::lexer_lock();
+        let mut lexer = Self::lexer_lock();
         let current_token = lexer.current_token();
         let allocation_size = match current_token {
             Token::RESB(_) => Ok(NonZeroU32::new(RESB_SIZE)),

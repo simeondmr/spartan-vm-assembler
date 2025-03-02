@@ -1,0 +1,3 @@
+section_bss
+section_data
+section_text

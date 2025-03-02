@@ -18,7 +18,7 @@ impl DeclBss {
 impl GrammarProductionParsing<(), ()> for DeclBss {
     fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
         while let Token::Literal(_, _) = {
-            let lexer = <DeclBss as GrammarProductionParsing<_, _>>::lexer_lock();
+            let lexer = Self::lexer_lock();
             lexer.current_token()
         } {
             self.single_var_decl.parse(None)?;

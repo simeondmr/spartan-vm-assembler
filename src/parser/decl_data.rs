@@ -21,7 +21,7 @@ impl DeclData {
 impl GrammarProductionParsing<(), ()> for DeclData {
     fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
         while let Token::Literal(_, _) = {
-            let lexer = <DeclData as GrammarProductionParsing<_, _>>::lexer_lock();
+            let lexer = Self::lexer_lock();
             lexer.current_token()
         } {
             let variable_info = self.single_var_decl.parse(None)?;

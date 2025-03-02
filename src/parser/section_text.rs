@@ -17,7 +17,7 @@ impl SectionText {
 
 impl GrammarProductionParsing<(), ()> for SectionText {
     fn parse(&self, _param: Option<()>) -> Result<(), AssemblerErrors> {
-        let mut lexer = <SectionText as GrammarProductionParsing<_, _>>::lexer_lock();
+        let mut lexer = Self::lexer_lock();
         if lexer.current_token() != Token::SectionText(0) {
             return Ok(())
         }
